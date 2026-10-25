@@ -1,30 +1,109 @@
 # MINDHUNTER: The AI Interrogation Room
-A noir detective game driven by a real rule-based expert system (HTML/CSS/vanilla JS, no server).
 
-## What's new (v2)
-Numbered mission steps, progress tracker, suggested next action, persistent objective, per-action feedback (new evidence, why it matters, what the AI deduced), plain-English AI Analysis with the technical rules/traces inside an expandable section, and a confirm step before accusing.
+A noir detective browser game where the evidence is judged by a real **rule-based expert system**. You collect clues; the AI reasons over them with **forward chaining** and **backward chaining** and tells you who can, and cannot, be proven guilty.
 
-## Run
-Unzip and open `index.html` in any modern browser. Use the "Start Investigation" button, then the tabs: Suspects (interrogate), Locations (investigate), Evidence Board, Timeline, AI Analysis, Accuse.
+*College AI course project: Knowledge Representation, Rule-Based Expert Systems, Forward and Backward Chaining.*
 
-## Story
-Richard Blackwood is killed in his locked study at ~11 PM. Suspects: Elena Cross (partner), Adrian Vale (nephew), Dr. Mira Shah (physician), Noah Reed (security head). Exactly one is provable as guilty.
+---
 
-## Files
-- `index.html` page shell, `style.css` noir theme
-- `script.js`: section 1 DATA, 2 KNOWLEDGE BASE + RULES, 3 INFERENCE ENGINE, 4 UI
-- `README.md`
+## 1. Inspiration
+- **Classic whodunits (Cluedo/Clue, Agatha Christie):** a closed circle of suspects, each with a motive, and one culprit determined by logic.
+- **Deduction-driven detective games (Return of the Obra Dinn, Her Story):** the player pieces the truth together from evidence rather than being told.
+- **Film noir:** the charcoal, red and muted-gold look, with a single-lamp interrogation-room mood.
+- **Classic expert systems (MYCIN, Prolog-style reasoning):** knowledge held as IF-THEN rules, with a transparent explanation of how a conclusion was reached.
+- **The core idea:** a detective's reasoning ("he had a motive, the chance and the means") maps naturally onto rules, so the game can show AI reasoning instead of hiding it.
 
-## AI concepts
-- **Knowledge representation**: facts are keys such as `card_noah`, `alibi_elena` stored as CONFIRMED / DISPROVEN; absent = UNKNOWN (never assumed false).
-- **Rules**: `IF motive AND opportunity AND means THEN guilty`; `IF alibi THEN NOT opportunity`.
-- **Forward chaining** (`forwardChain`): after each clue, fire every rule whose conditions hold until no new facts appear; each firing is logged.
-- **Backward chaining** (`prove`): starts from `guilty_X`, recursively proves sub-goals, prints a trace and lists missing leaf facts.
+## 2. Tech Stack
+- **HTML5:** page shell (`index.html`).
+- **CSS3:** noir theme, responsive grid, focus styles, reduced-motion support (`style.css`).
+- **Vanilla JavaScript (ES6):** game data, knowledge base, inference engine and UI (`script.js`).
+- **No backend, build tools, frameworks, paid services or AI APIs.** The "AI" is hand-written, readable JavaScript.
+- **Runs offline:** open `index.html` in any modern browser.
 
-Examples: `IF tod_window AND call_elena THEN alibi_elena` (forward). Goal `guilty_noah` needs `motive_noah`, `opportunity_noah`, `means_noah` (backward).
+## 3. Run It
+- Unzip and double-click `index.html`.
+- Or in VS Code: open the folder, install **Live Server**, right-click `index.html` and choose **Open with Live Server**.
 
-## Viva demo
-1. Open AI Analysis (all UNKNOWN). 2. Collect autopsy + study door log: opportunity(Noah) appears via forward chaining. 3. Expand Noah's backward-chaining trace to show the missing motive/means. 4. Collect alibis and watch the other suspects become DISPROVEN. 5. Accuse and read the proof trace.
+## 4. Story
+- Tech entrepreneur **Richard Blackwood** is found dead in his locked study at 11:00 PM.
+- **Suspects:** Elena Cross (business partner), Adrian Vale (nephew), Dr. Mira Shah (physician), Noah Reed (head of security).
+- Everyone has a motive, but only one suspect satisfies **Motive + Opportunity + Means**. The evidence uniquely supports that suspect.
 
-## Limitations
-Single case, fixed suspect set, text-only portraits (initial avatars).
+## 5. How to Play
+- **Locations:** search 4 places for physical evidence.
+- **Suspects:** ask each suspect 3 questions; some answers reveal clues.
+- **Evidence Board and Timeline:** review clues and the rebuilt night.
+- **AI Analysis:** plain-English verdicts per suspect, plus an expandable technical view.
+- **Accuse:** pick a suspect and confirm. Scoring rewards clues, AI deductions and a proven accusation.
+- The **progress tracker** and **Suggested next step** box guide you throughout.
+
+## 6. AI Concepts Used
+
+### Knowledge Representation
+- **Facts** are named atoms, e.g. `card_noah`, `alibi_elena`, `motive_adrian`.
+- Each fact has one of three states:
+  - **CONFIRMED:** supported by evidence or a fired rule.
+  - **DISPROVEN:** contradicted by a rule (e.g. an alibi).
+  - **UNKNOWN:** simply absent from the knowledge base.
+- **Open-world reasoning:** missing evidence is never treated as false.
+
+### Inference Rules (IF-THEN)
+- Each rule is an object: `{id, name, if:[conditions], then, val}`.
+- Examples:
+  - `IF tod_window AND call_elena THEN alibi_elena`
+  - `IF alibi_X THEN NOT opportunity_X`
+  - `IF tod_window AND card_noah THEN opportunity_noah`
+  - `IF master_X THEN means_X`
+  - `IF motive_X AND opportunity_X AND means_X THEN guilty_X`
+- The **same rules** are applied to all four suspects.
+
+### Forward Chaining (data-driven)
+- Function: `forwardChain()`.
+- Trigger: runs every time a clue is added.
+- Process:
+  - Scan all rules; fire any whose conditions are all CONFIRMED.
+  - Add the conclusion as a new fact (duplicates are blocked).
+  - Repeat until nothing new can be derived.
+- Output: a log of fired rules by round, shown in the technical view.
+
+### Backward Chaining (goal-driven)
+- Function: `prove(goal)`.
+- Process:
+  - Start from a goal such as `guilty_noah`.
+  - Find rules that conclude it, then recursively prove each condition.
+  - Return **T** (proven), **F** (disproven) or **U** (unknown).
+- Output:
+  - A readable trace of every sub-goal.
+  - A list of **missing facts** that would settle an unknown goal.
+
+### Explainability
+- Every derived fact records which rule produced it.
+- Plain-English verdicts, fired-rule logs and proof traces explain every conclusion.
+
+## 7. How It Works (Flow)
+- **1. Player action:** search a location or ask a question.
+- **2. Clue added:** `addClue(id)` converts the clue into base facts (no duplicates).
+- **3. Forward chaining:** derives alibis, opportunities, means, motives.
+- **4. UI refresh:** the banner shows the new clue, why it matters and what the AI deduced; the AI Analysis updates.
+- **5. Backward chaining:** `prove('guilty_X')` produces each suspect's verdict and missing evidence.
+- **6. Accusation:** compared with the truth, and also checked against what the AI could prove, for scoring.
+
+## 8. Code Structure (`script.js`)
+- **Section 1, DATA:** suspects, clues, locations, timeline.
+- **Section 2, KNOWLEDGE BASE and RULES:** fact labels, rule definitions, KB object.
+- **Section 3, INFERENCE ENGINE:** `addClue`, `forwardChain`, `prove`, scoring.
+- **Section 4, UI:** views, tabs, guidance, feedback, event handling.
+
+## 9. Viva Demo Script
+- **Step 1:** Open **AI Analysis** with no evidence: all suspects are STILL POSSIBLE (unknown, not false).
+- **Step 2:** Collect the autopsy and study door log: forward chaining derives `opportunity_noah`.
+- **Step 3:** Expand Noah's **backward-chaining trace**: it lists missing motive and means.
+- **Step 4:** Collect the alibi clues: other suspects become CLEARED via `alibi -> NOT opportunity`.
+- **Step 5:** Accuse Noah and read the proof trace on the result screen.
+- **Be ready to explain:** forward vs backward chaining, why unknown is not false, and why the culprit is unique.
+
+## 10. Known Limitations
+- Single fixed case with four suspects.
+- Initial-letter avatars instead of artwork.
+- No save/load between sessions.
+- Rules are hand-written, not learned; this is a symbolic AI project by design.
